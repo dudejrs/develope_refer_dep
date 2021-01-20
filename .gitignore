@@ -1,0 +1,29 @@
+
+__pycache__/
+/__pycache__/
+
+# 테스트하는 과정에서 나오는 파일들
+/rsc/data/*.result
+/rsc/word2vec/*
+/test/result/*.txt
+
+# 빌드하면서 생기는 파일들 
+/dist	
+*.whl
+*.gz
+/knowledge_graph_core*
+/build
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+
+#sublime
+spanoie.sublime-workspace
+*.sublime-workspace
