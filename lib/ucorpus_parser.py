@@ -4,95 +4,159 @@ import os
 
 
 
+log_uscorpus = False
+
+def logger_uscorpus(log_string):
+	if log_uscorpus :
+		print(log_string)
+
+	return
+
+class UcorpusInstance : 
+	def __init__(self, sent, tags, dep_tuples) :
+		self.sent = sent
+		self.tags = tags
+		self.dep_tuples = dep_tuples
+
+def cleanInstances(instances) :
+
+	clean_index_list = []
+	a,b,c = 0,0,0
+
+	for i in range(len(instances)) :
+		instance = instances[i]
+
+		if instance.sent == "" :
+			clean_index_list.append(i)
+			a+=1
+		if len(instance.tags) == 0 :
+			clean_index_list.append(i)
+			b+=1
+		if len(instance.tags) != len(instance.dep_tuples) :
+			clean_index_list.append(i)
+			c+=1
+
+	instances = [instances[i] for i in range(len(instances)) if i not in clean_index_list]
+	logger_uscorpus('a: {}, b: {}, c: {}'.format(a,b,c))
+
+	return instances
+
+def destruct_instances (instances):
+	doc = []
+	tags = []
+	dep_tuples_list = []
+
+	for instance in instances :
+		doc.append(instance.sent)
+		tags.append(instance.tags)
+		dep_tuples_list.append(instance.dep_tuples)
+
+	return doc, tags, dep_tuples_list
 
 def read_ucorpus_all(dir_path) :
 	file_list = os.listdir(dir_path)
 
 	doc_ = []
 	tags_ = []
-	dep_tuples_ = []
+	dep_tuples_list_ = []
 
 	for file in file_list :
 		print(dir_path+'/'+file)
-		doc, tags, dep_tuples = read_ucorpus(dir_path+'/'+file)	
-		doc_.append(doc)
-		tags_.append(tags)
-		dep_tuples_.append(dep_tuples)
+		instances = read_ucorpus(dir_path+'/'+file)	
+		instances = cleanInstances(instances)
+		doc, tags, dep_tuples_list = destruct_instances(instances)
+		doc_.extend(doc)
+		tags_.extend(tags)
+		dep_tuples_list_.extend(dep_tuples_list)
 
-	return 
+	return doc_, tags_, dep_tuples_list_
 
 
 def read_ucorpus(rfName) :
 
 	rf = open(rfName,'r',encoding="utf16", errors='ignore')
 
-
-	count = 0 
+	matcher = re.compile(r'^[0-9]+\s[0-9]+')
 	i = 1
+	count = 0
 
 	line = rf.readline()
 	doc = [line.strip()] 
 	tags = []
 	dep_tuples_list = []
 
-	while len(line) != 0  :
+	flags = "IN"
+	instances = []
+	sent= line.strip()
+	dep_tuples = []
+
+	while len(line) != 0 :
 
 		line = rf.readline()
 
 		if len(line) == 0 :
 			break
 
-		elif i == 0 and len(line) > 1 : 
-			doc.append(line.strip())
-			i+=1
-			continue
-
-		elif i == 1 : 
-			line = re.sub('(_)+([0-9]+)','',line.strip())
-			line = re.split(r'\s', line)
-			
-			tmp = []
-			for token in line :
+		if flags == "IN" :
+			if line[0] == "#" :
+				# if(line[1] == "0") :
+				# 	sent = ""
+				# 	tags = []
+				# 	flags="OUT"
+				pass
+			elif len(line.strip()) == 0 :
+				instances.append(UcorpusInstance(sent,tags,dep_tuples))
+				flags = "OUT"
+			elif matcher.match(line) == None :
+				line = re.sub('(_)+([0-9]+)','',line.strip())
+				line = re.split(r'\s', line)
 				
-				word_token = ''
-				pos_token = ''
+				try: 
+					for token in line :
+						
+						word_token = ''
+						pos_token = ''
 
-				for subtoken in re.split(r'\+', token) :
-					try: 
-						microtoken  =  re.split(r'\/', subtoken) 
-						# microtoken[0] = re.sub(r'[\[\]\(\)]','',	microtoken[0])
-						word_token = word_token + microtoken[0]
-						pos_token = pos_token + " "+microtoken[1]
-					except Exception as e : 
-						print(rfName,len(doc),token, e)
+						for subtoken in re.split(r'\+', token) :
+								microtoken  =  re.split(r'\/', subtoken) 
+								# microtoken[0] = re.sub(r'[\[\]\(\)]','',	microtoken[0])
+								word_token = word_token + microtoken[0]
+								pos_token = pos_token + " " + microtoken[1]
 
-				pos_token = re.sub(" ","+",pos_token[1:])
-				tmp.append((word_token,pos_token))
+						pos_token = re.sub(" ","+",pos_token[1:])
+						tags.append((word_token,pos_token))
 
-			tags.append(tmp)
-			i+=1
-			continue
 
-		elif line == '\n':
-			i = 0
-			continue
+				except Exception as e : 
+					logger_uscorpus('{},{},{}'.format(rfName, subtoken, e))
+					tags = []
+					continue
 
-		elif line[0] != '#' :
+			else : 
+				try : 
+					line_ = re.split(r'\s', line)
+					dep_tuples.append((int(line_[0]), int(line_[1])))
+				except Exception as e :
+					logger_uscorpus('{},{}'.format(rfName, e))
+					continue
 
-			dep_tuples = []
+		else :
+			if len(line.strip()) == 0 :
+				continue
+			else :
+				sent = line.strip()
+				dep_tuples = []
+				tags = []
+				flags = "IN"
 
-			while len(line.strip()) != 0 :
-				line_ = re.split(r'\s', line)
-				dep_tuples.append((int(line_[0]), int(line_[1])))
-				line = rf.readline()
-		
-			dep_tuples_list.append(dep_tuples)
 			
-	return doc, tags, dep_tuples_list
+	return instances
 
-def read_ucorpus_test(rfName):
+def read_ucorpus_test(rfName) :
+	instances = read_ucorpus(rfName)
+	instances = cleanInstances(instances)
 
-	doc, tags, dep_tuples_list = read_ucorpus(rfName)
+	doc, tags, dep_tuples_list = destruct_instances(instances)
 
 	wfName = 'result'
 	wf = open(wfName, 'w')
@@ -100,8 +164,7 @@ def read_ucorpus_test(rfName):
 	wf_deps = open(wfName+".deps",'w')
 
 	for i in range(len(doc)) :
-		# if( len(dep_tuples_list[i]) != len(tags[i])) :
-		# 	raise Exception('태그와 dependey 튜플의 수가 같지 아니함\n count : {}\n dep_tuples : {}\n tags : {}\n'.format(i, len(dep_tuples_list[i]),len(tags[i])))
+
 		wf.writelines([doc[i]+'\n'])
 
 		wf_tags.writelines(['[ {} ] : '.format(i)])	
@@ -116,18 +179,15 @@ def read_ucorpus_test(rfName):
 				wf_deps.writelines(['{}/{}\t'.format(k[0],k[1])])
 			wf_deps.writelines(['\n'])
 		except Exception as e:
-			print(i,e)
-
-
-	print("success\n count : {}".format(len(doc)))
+			pass
+			# print(i,e)
 
 	print(len(tags),len(dep_tuples_list))
 
-	return doc, tags, dep_tuples_list
-
 
 if __name__ == '__main__' :
+	log_uscorpus =True
 	rfName = "./data/UCorpus_DP_SR/BGEO0320_srl.txt"
-	doc, tags, dep_tuples_list = read_ucorpus_test(rfName)
+	read_ucorpus_test(rfName)
 
 

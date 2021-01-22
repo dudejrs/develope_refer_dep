@@ -20,7 +20,8 @@ def main() :
 	word_embedding = 'word2vec'
 	word_path = "data/embedding/social_skipgram_test_w2v" 
 
-	read_ucorpus_all(train_path)
+	doc, tags, dep_tuples_list = read_ucorpus_all(train_path)
+	print(len(doc))
 
 	if word_embedding != 'random':
 		word_dict, word_dim = load_embedding_dict(word_embedding, word_path)
