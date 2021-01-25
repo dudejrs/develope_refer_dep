@@ -1,5 +1,6 @@
 import re
 import os
+from collections import defaultdict
 # from lib.neuronlp2.io.instance import DependencyInstance
 
 
@@ -59,17 +60,20 @@ def read_ucorpus_all(dir_path) :
 	doc_ = []
 	tags_ = []
 	dep_tuples_list_ = []
+	vocab_ = defaultdict(int)
 
-	for file in file_list :
+	for file in file_list[:3] :
 		print(dir_path+'/'+file)
-		instances = read_ucorpus(dir_path+'/'+file)	
+		instances, vocab = read_ucorpus(dir_path+'/'+file)	
 		instances = cleanInstances(instances)
 		doc, tags, dep_tuples_list = destruct_instances(instances)
 		doc_.extend(doc)
 		tags_.extend(tags)
 		dep_tuples_list_.extend(dep_tuples_list)
+		for k,v in vocab.items() :
+			vocab_[k] += v
 
-	return doc_, tags_, dep_tuples_list_
+	return doc_, tags_, dep_tuples_list_, vocab_
 
 
 def read_ucorpus(rfName) :
@@ -77,18 +81,17 @@ def read_ucorpus(rfName) :
 	rf = open(rfName,'r',encoding="utf16", errors='ignore')
 
 	matcher = re.compile(r'^[0-9]+\s[0-9]+')
-	i = 1
-	count = 0
+
+	instances = []
+	vocab = defaultdict(int)
 
 	line = rf.readline()
-	doc = [line.strip()] 
-	tags = []
-	dep_tuples_list = []
-
 	flags = "IN"
-	instances = []
+
 	sent= line.strip()
+	tags = []
 	dep_tuples = []
+
 
 	while len(line) != 0 :
 
@@ -124,6 +127,7 @@ def read_ucorpus(rfName) :
 								pos_token = pos_token + " " + microtoken[1]
 
 						pos_token = re.sub(" ","+",pos_token[1:])
+						vocab[word_token] +=1
 						tags.append((word_token,pos_token))
 
 
@@ -150,10 +154,10 @@ def read_ucorpus(rfName) :
 				flags = "IN"
 
 			
-	return instances
+	return instances, vocab
 
 def read_ucorpus_test(rfName) :
-	instances = read_ucorpus(rfName)
+	instances, vocab = read_ucorpus(rfName)
 	instances = cleanInstances(instances)
 
 	doc, tags, dep_tuples_list = destruct_instances(instances)
@@ -183,6 +187,7 @@ def read_ucorpus_test(rfName) :
 			# print(i,e)
 
 	print(len(tags),len(dep_tuples_list))
+	print(tags)
 
 
 if __name__ == '__main__' :

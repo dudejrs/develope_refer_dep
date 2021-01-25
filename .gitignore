@@ -3,9 +3,7 @@ __pycache__/
 /__pycache__/
 
 # 테스트하는 과정에서 나오는 파일들
-/rsc/data/*.result
-/rsc/word2vec/*
-/test/result/*.txt
+/data/UCorpus_DP_SR/*
 
 # 빌드하면서 생기는 파일들 
 /dist	
